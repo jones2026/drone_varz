@@ -25,4 +25,4 @@ jobs:
       run: go test -v ./... --cover
 
     - name: Result
-      run: env
+      run: cat $GITHUB_ENV
