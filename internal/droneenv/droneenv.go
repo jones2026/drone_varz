@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Env is the subset of the environment this package reads from, as an
@@ -78,14 +79,29 @@ var semverRe = regexp.MustCompile(`^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-.]+))?(
 // UnsupportedFields lists DRONE_* variables that have no reliable GitHub
 // Actions source and are always exported empty. Drone populates these from
 // its own server/build-graph state, which GitHub Actions doesn't expose.
+//
+// This deliberately excludes fields Drone types as integers (timestamps,
+// build/step numbers) even when we have no real value for them: many
+// official Drone plugins are built on a shared library that binds these
+// straight to an int64 CLI flag and calls strconv.ParseInt on whatever
+// GITHUB_ENV handed it, with no nil-handling - an empty string crashes the
+// plugin before its own logic ever runs. Those fields get a numeric
+// placeholder instead; see zeroIntFields and Build's timestamp handling.
 var UnsupportedFields = []string{
-	"DRONE_BUILD_CREATED", "DRONE_BUILD_FINISHED", "DRONE_BUILD_PARENT", "DRONE_BUILD_STARTED",
 	"DRONE_CALVER", "DRONE_DEPLOY_TO",
 	"DRONE_FAILED_STAGES", "DRONE_FAILED_STEPS",
 	"DRONE_SEMVER_ERROR",
-	"DRONE_STAGE_DEPENDS_ON", "DRONE_STAGE_FINISHED", "DRONE_STAGE_STARTED", "DRONE_STAGE_VARIANT",
-	"DRONE_STEP_NAME", "DRONE_STEP_NUMBER",
+	"DRONE_STAGE_DEPENDS_ON", "DRONE_STAGE_VARIANT",
+	"DRONE_STEP_NAME",
 	"DRONE_SYSTEM_VERSION",
+}
+
+// zeroIntFields lists DRONE_* variables Drone types as integers where we
+// have no real value to report. "0" is a safe placeholder a strict int
+// parser accepts; unlike the string-typed UnsupportedFields, "" is not.
+var zeroIntFields = []string{
+	"DRONE_BUILD_FINISHED", "DRONE_BUILD_PARENT",
+	"DRONE_STAGE_FINISHED", "DRONE_STEP_NUMBER",
 }
 
 // Build derives the full set of DRONE_* variables (plus CI/DRONE) from the
@@ -131,7 +147,9 @@ func Build(env Env) map[string]string {
 		commitMessage = payload.PullRequest.Title
 	}
 
-	pullRequest, pullRequestTitle := "", ""
+	// DRONE_PULL_REQUEST is an integer in Drone (0 when there is none), not
+	// an empty string - same int-parsing hazard as the timestamp fields.
+	pullRequest, pullRequestTitle := "0", ""
 	if isPR {
 		if payload.PullRequest.Number != 0 {
 			pullRequest = strconv.Itoa(payload.PullRequest.Number)
@@ -163,6 +181,22 @@ func Build(env Env) map[string]string {
 		semverShort = fmt.Sprintf("%s.%s.%s", semverMajor, semverMinor, semverPatch)
 	}
 
+	// Approximates DRONE_BUILD_STARTED/DRONE_STAGE_STARTED - GitHub Actions
+	// exposes no job-start-time env var, so "now" (this step runs early in
+	// the job) is the closest available stand-in. Still real int64 seconds
+	// since epoch, which is what matters for plugins that parse it as one.
+	now := strconv.FormatInt(time.Now().Unix(), 10)
+
+	// GITHUB_RUN_NUMBER/GITHUB_RUN_ATTEMPT are always set by GitHub Actions
+	// in practice, but these back int-typed DRONE_* fields, so fall back to
+	// "0" rather than "" on the off chance either is ever absent.
+	orZero := func(s string) string {
+		if s == "" {
+			return "0"
+		}
+		return s
+	}
+
 	vars := map[string]string{
 		"CI":    "true",
 		"DRONE": "true",
@@ -171,11 +205,13 @@ func Build(env Env) map[string]string {
 		"DRONE_SOURCE_BRANCH": sourceBranch,
 		"DRONE_TARGET_BRANCH": targetBranch,
 
-		"DRONE_BUILD_ACTION": payload.Action,
-		"DRONE_BUILD_EVENT":  buildEvent,
-		"DRONE_BUILD_LINK":   fmt.Sprintf("%s/%s/actions/runs/%s", serverURL, repo, g("GITHUB_RUN_ID")),
-		"DRONE_BUILD_NUMBER": g("GITHUB_RUN_NUMBER"),
-		"DRONE_BUILD_STATUS": "success",
+		"DRONE_BUILD_ACTION":  payload.Action,
+		"DRONE_BUILD_CREATED": now,
+		"DRONE_BUILD_EVENT":   buildEvent,
+		"DRONE_BUILD_LINK":    fmt.Sprintf("%s/%s/actions/runs/%s", serverURL, repo, g("GITHUB_RUN_ID")),
+		"DRONE_BUILD_NUMBER":  orZero(g("GITHUB_RUN_NUMBER")),
+		"DRONE_BUILD_STARTED": now,
+		"DRONE_BUILD_STATUS":  "success",
 
 		"DRONE_COMMIT":               g("GITHUB_SHA"),
 		"DRONE_COMMIT_SHA":           g("GITHUB_SHA"),
@@ -219,10 +255,11 @@ func Build(env Env) map[string]string {
 		"DRONE_STAGE_KIND":    "pipeline",
 		"DRONE_STAGE_TYPE":    "docker",
 		"DRONE_STAGE_NAME":    g("GITHUB_JOB"),
-		"DRONE_STAGE_NUMBER":  g("GITHUB_RUN_ATTEMPT"),
+		"DRONE_STAGE_NUMBER":  orZero(g("GITHUB_RUN_ATTEMPT")),
 		"DRONE_STAGE_OS":      strings.ToLower(g("RUNNER_OS")),
 		"DRONE_STAGE_ARCH":    strings.ToLower(g("RUNNER_ARCH")),
 		"DRONE_STAGE_MACHINE": g("RUNNER_NAME"),
+		"DRONE_STAGE_STARTED": now,
 		"DRONE_STAGE_STATUS":  "success",
 
 		"DRONE_SYSTEM_HOST":     systemHost,
@@ -232,6 +269,9 @@ func Build(env Env) map[string]string {
 
 	for _, k := range UnsupportedFields {
 		vars[k] = ""
+	}
+	for _, k := range zeroIntFields {
+		vars[k] = "0"
 	}
 
 	return vars
