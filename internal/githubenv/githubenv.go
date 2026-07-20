@@ -1,4 +1,6 @@
-package droneenv
+// Package githubenv writes environment variables into a GitHub Actions
+// GITHUB_ENV file, for later steps in the same job to pick up.
+package githubenv
 
 import (
 	"crypto/rand"
@@ -10,8 +12,8 @@ import (
 	"strings"
 )
 
-// WriteGitHubEnv appends vars to the file at GITHUB_ENV using the heredoc
-// form GitHub Actions requires for values that may contain newlines:
+// Write appends vars to the file at GITHUB_ENV using the heredoc form
+// GitHub Actions requires for values that may contain newlines:
 //
 //	NAME<<DELIMITER
 //	value
@@ -19,7 +21,7 @@ import (
 //
 // Keys are written in sorted order for deterministic output. If GITHUB_ENV
 // is unset (e.g. running locally, outside a workflow), this is a no-op.
-func WriteGitHubEnv(vars map[string]string) error {
+func Write(vars map[string]string) error {
 	path := os.Getenv("GITHUB_ENV")
 	if path == "" {
 		return nil
@@ -29,10 +31,10 @@ func WriteGitHubEnv(vars map[string]string) error {
 		return fmt.Errorf("open GITHUB_ENV: %w", err)
 	}
 	defer f.Close()
-	return writeGitHubEnv(f, vars)
+	return write(f, vars)
 }
 
-func writeGitHubEnv(w io.Writer, vars map[string]string) error {
+func write(w io.Writer, vars map[string]string) error {
 	keys := make([]string, 0, len(vars))
 	for k := range vars {
 		keys = append(keys, k)

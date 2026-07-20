@@ -1,3 +1,5 @@
+// Command droneenv exports DRONE_* environment variables, derived from the
+// ambient GitHub Actions context, into GITHUB_ENV for later steps to use.
 package main
 
 import (
@@ -6,6 +8,7 @@ import (
 	"sort"
 
 	"github.com/jones2026/drone_varz/internal/droneenv"
+	"github.com/jones2026/drone_varz/internal/githubenv"
 )
 
 func main() {
@@ -20,7 +23,7 @@ func main() {
 		fmt.Printf("%s=%s\n", k, vars[k])
 	}
 
-	if err := droneenv.WriteGitHubEnv(vars); err != nil {
+	if err := githubenv.Write(vars); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

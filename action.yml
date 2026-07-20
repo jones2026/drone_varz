@@ -1,0 +1,56 @@
+name: 'Run Drone Plugin'
+description: >
+  Run a Drone plugin Docker image as a GitHub Actions step. Translates the
+  GitHub Actions context into the DRONE_* environment variables a Drone
+  plugin expects, converts a Drone-style settings: block into PLUGIN_*
+  variables, and runs the plugin image with the checked-out repo mounted
+  as its working directory.
+author: 'jones2026'
+
+inputs:
+  image:
+    description: 'Drone plugin Docker image to run, e.g. plugins/slack.'
+    required: true
+  settings:
+    description: >
+      Plugin settings, as YAML - paste the same settings: block you would
+      use under a Drone pipeline step. Keys are uppercased and prefixed
+      PLUGIN_, arrays are comma-joined, matching Drone's plugin input
+      convention.
+    required: false
+    default: ''
+  pull:
+    description: 'Image pull policy: always, if-not-present, or never.'
+    required: false
+    default: 'if-not-present'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: '${{ github.action_path }}/go.mod'
+
+    - name: Export DRONE_* vars from GitHub Actions context
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: go run ./cmd/droneenv
+
+    - name: Export PLUGIN_* vars from settings
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      env:
+        DRONE_VARZ_SETTINGS: ${{ inputs.settings }}
+      run: |
+        settings_file="$(mktemp)"
+        printf '%s' "$DRONE_VARZ_SETTINGS" > "$settings_file"
+        go run ./cmd/pluginenv "$settings_file"
+        rm -f "$settings_file"
+
+    - name: Run plugin
+      shell: bash
+      env:
+        DRONE_VARZ_IMAGE: ${{ inputs.image }}
+        DRONE_VARZ_PULL: ${{ inputs.pull }}
+      run: '"${{ github.action_path }}/scripts/run-plugin.sh" "$DRONE_VARZ_IMAGE" "$DRONE_VARZ_PULL"'
