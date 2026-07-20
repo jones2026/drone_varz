@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 )
 
@@ -77,7 +78,7 @@ func TestBuild_Push(t *testing.T) {
 		"DRONE_REPO_OWNER":          "jones2026",
 		"DRONE_REPO_VISIBILITY":     "public",
 		"DRONE_REPO_PRIVATE":        "false",
-		"DRONE_PULL_REQUEST":        "",
+		"DRONE_PULL_REQUEST":        "0",
 		"DRONE_BUILD_LINK":          "https://github.com/jones2026/drone_varz/actions/runs/123",
 		"DRONE_BUILD_NUMBER":        "7",
 	}
@@ -158,6 +159,43 @@ func TestBuild_UnsupportedFieldsAreEmpty(t *testing.T) {
 	for _, k := range UnsupportedFields {
 		if got, ok := vars[k]; !ok || got != "" {
 			t.Errorf("%s = %q, %v; want present and empty", k, got, ok)
+		}
+	}
+}
+
+func TestBuild_ZeroIntFieldsAreZero(t *testing.T) {
+	vars := Build(fakeEnv{})
+	for _, k := range zeroIntFields {
+		if got, ok := vars[k]; !ok || got != "0" {
+			t.Errorf("%s = %q, %v; want present and \"0\"", k, got, ok)
+		}
+	}
+}
+
+// Regression test for a real crash: plugins/webhook (and other official
+// Drone plugins built on the same shared library) bind DRONE_* fields like
+// build.started straight to an int64 CLI flag and call strconv.ParseInt on
+// whatever they're given, with no empty-string handling. Every field Drone
+// types as an integer must therefore always parse as one, even with a
+// completely bare environment - "" is not an acceptable placeholder for
+// any of them, only for the genuinely string-typed UnsupportedFields.
+func TestBuild_IntTypedFieldsAlwaysParseAsInt(t *testing.T) {
+	intFields := []string{
+		"DRONE_BUILD_CREATED", "DRONE_BUILD_FINISHED", "DRONE_BUILD_NUMBER",
+		"DRONE_BUILD_PARENT", "DRONE_BUILD_STARTED",
+		"DRONE_PULL_REQUEST",
+		"DRONE_STAGE_FINISHED", "DRONE_STAGE_NUMBER", "DRONE_STAGE_STARTED",
+		"DRONE_STEP_NUMBER",
+	}
+	vars := Build(fakeEnv{})
+	for _, k := range intFields {
+		v, ok := vars[k]
+		if !ok {
+			t.Errorf("%s missing from Build output", k)
+			continue
+		}
+		if _, err := strconv.ParseInt(v, 10, 64); err != nil {
+			t.Errorf("%s = %q does not parse as int64: %v", k, v, err)
 		}
 	}
 }
