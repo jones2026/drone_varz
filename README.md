@@ -30,9 +30,12 @@ jobs:
 
 The `settings:` value is the exact YAML you'd paste under a Drone
 pipeline step — no translation needed. See `.github/workflows/example.yml`
-for a runnable example using the public [plugins/webhook] plugin.
+for a runnable example using the real, published [plugins/webhook] plugin,
+pointed at a local [go-httpbin] sidecar over `localhost` rather than an
+external endpoint, so the example never sends a request off the runner.
 
 [plugins/webhook]: https://github.com/drone-plugins/drone-webhook
+[go-httpbin]: https://github.com/mccutchen/go-httpbin
 
 ### Inputs
 

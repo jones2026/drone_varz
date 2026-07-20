@@ -8,13 +8,20 @@ on:
 jobs:
   run-plugin:
     runs-on: ubuntu-latest
+    services:
+      httpbin:
+        image: mccutchen/go-httpbin
+        ports:
+          - 8080:8080
     steps:
       - uses: actions/checkout@v4
 
       # plugins/webhook is a real, published Drone plugin. It POSTs a JSON
-      # build payload to the configured url(s); httpbin.org/post is a
-      # public echo endpoint, so this is safe and side-effect-free to run
-      # on every push, and doubles as an end-to-end smoke test for the
+      # build payload to the configured url(s). Rather than pointing it at
+      # an external site, it targets the go-httpbin sidecar above over
+      # localhost (run-plugin.sh runs the plugin with --network host) -
+      # a locally-run httpbin-compatible echo endpoint, so no request ever
+      # leaves the runner. This is an end-to-end smoke test for the
       # action: DRONE_* export, PLUGIN_* export, and the docker run all
       # have to work for this step to succeed.
       - name: Run plugins/webhook through this action
@@ -22,5 +29,5 @@ jobs:
         with:
           image: plugins/webhook
           settings: |
-            urls: https://httpbin.org/post
+            urls: http://localhost:8080/post
             valid_response_codes: 200

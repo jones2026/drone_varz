@@ -6,6 +6,12 @@
 # PLUGIN_*, CI and DRONE env var already present in this shell (exported
 # earlier via GITHUB_ENV by the drone_varz and settings-to-env steps) is
 # forwarded into the container.
+#
+# Runs with --network host (Linux-only, which is what GitHub-hosted
+# runners are) so the plugin can reach job-level `services:` sidecars via
+# localhost, the same way it would reach a real external endpoint - useful
+# for pointing a webhook/notify-style plugin at a local stand-in instead
+# of a real one during testing.
 set -euo pipefail
 
 image="${1:?usage: run-plugin.sh <image> <pull-policy>}"
@@ -35,6 +41,7 @@ while IFS='=' read -r name _; do
 done < <(env)
 
 exec docker run --rm \
+  --network host \
   --workdir "$GITHUB_WORKSPACE" \
   -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" \
   "${env_args[@]}" \
