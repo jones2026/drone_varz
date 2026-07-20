@@ -13,6 +13,8 @@ jobs:
         image: mccutchen/go-httpbin
         ports:
           - 8080:8080
+        env:
+          LOG_LEVEL: DEBUG
     steps:
       - uses: actions/checkout@v4
 
@@ -24,6 +26,11 @@ jobs:
       # leaves the runner. This is an end-to-end smoke test for the
       # action: DRONE_* export, PLUGIN_* export, and the docker run all
       # have to work for this step to succeed.
+      #
+      # The custom header carries a value straight from this settings:
+      # block (-> PLUGIN_HEADERS), so the sidecar's request log in the
+      # next step is visible proof the settings actually reached the real
+      # HTTP request, not just that some POST happened.
       - name: Run plugins/webhook through this action
         uses: ./
         with:
@@ -31,3 +38,8 @@ jobs:
           settings: |
             urls: http://localhost:8080/post
             valid_response_codes: 200
+            headers: X-Drone-Varz-Demo=hello-from-drone-varz
+
+      - name: Show what the sidecar received
+        if: always()
+        run: docker logs "$(docker ps -q --filter ancestor=mccutchen/go-httpbin)" --tail 100
