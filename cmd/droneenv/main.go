@@ -1,3 +1,5 @@
+// Command droneenv exports DRONE_* environment variables, derived from the
+// ambient GitHub Actions context, into GITHUB_ENV for later steps to use.
 package main
 
 import (

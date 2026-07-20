@@ -27,8 +27,8 @@ jobs:
     - name: Test
       run: go test -v ./... --cover
 
-    - name: Run
-      run: go run main.go
+    - name: Run droneenv
+      run: go run ./cmd/droneenv
 
     - name: Result
       run: env
