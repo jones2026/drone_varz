@@ -1,0 +1,26 @@
+name: Example - run a Drone plugin
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  run-plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # plugins/webhook is a real, published Drone plugin. It POSTs a JSON
+      # build payload to the configured url(s); httpbin.org/post is a
+      # public echo endpoint, so this is safe and side-effect-free to run
+      # on every push, and doubles as an end-to-end smoke test for the
+      # action: DRONE_* export, PLUGIN_* export, and the docker run all
+      # have to work for this step to succeed.
+      - name: Run plugins/webhook through this action
+        uses: ./
+        with:
+          image: plugins/webhook
+          settings: |
+            urls: https://httpbin.org/post
+            valid_response_codes: 200
