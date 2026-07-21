@@ -1,4 +1,4 @@
-# drone_varz
+# drone-action-bridge
 
 Run a [Drone](https://www.drone.io/) plugin — just a Docker image — as a
 step in a GitHub Actions workflow, without modifying the plugin.
@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: jones2026/drone_varz@main
+      - uses: jones2026/drone-action-bridge@main
         with:
           image: plugins/slack
           settings: |

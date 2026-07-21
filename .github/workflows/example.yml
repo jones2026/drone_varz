@@ -57,10 +57,10 @@ jobs:
             valid_response_codes: 200
             skip_verify: false
             debug: true
-            headers: X-Drone-Varz-Demo=hello-from-drone-varz
+            headers: X-Drone-Action-Bridge-Demo=hello-from-drone-action-bridge
             template: |
               {
-                "message": "hello from drone_varz",
+                "message": "hello from drone-action-bridge",
                 "repo": "{{repo.owner}}/{{repo.name}}",
                 "branch": "{{build.branch}}",
                 "commit": "{{build.commit}}",
