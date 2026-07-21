@@ -78,12 +78,19 @@ Most `DRONE_*` variables are filled in from `GITHUB_*` env vars and the
 fields parsed from a tag ref. A few have no reliable GitHub Actions
 source and are always exported empty:
 
-`DRONE_BUILD_CREATED`, `DRONE_BUILD_FINISHED`, `DRONE_BUILD_PARENT`,
-`DRONE_BUILD_STARTED`, `DRONE_CALVER`, `DRONE_DEPLOY_TO`,
-`DRONE_FAILED_STAGES`, `DRONE_FAILED_STEPS`, `DRONE_SEMVER_ERROR`,
-`DRONE_STAGE_DEPENDS_ON`, `DRONE_STAGE_FINISHED`, `DRONE_STAGE_STARTED`,
-`DRONE_STAGE_VARIANT`, `DRONE_STEP_NAME`, `DRONE_STEP_NUMBER`,
-`DRONE_SYSTEM_VERSION`.
+`DRONE_CALVER`, `DRONE_DEPLOY_TO`, `DRONE_FAILED_STAGES`,
+`DRONE_FAILED_STEPS`, `DRONE_SEMVER_ERROR`, `DRONE_STAGE_DEPENDS_ON`,
+`DRONE_STAGE_VARIANT`, `DRONE_STEP_NAME`, `DRONE_SYSTEM_VERSION`.
+
+A further set that Drone types as integers - `DRONE_BUILD_FINISHED`,
+`DRONE_STAGE_FINISHED`, `DRONE_BUILD_PARENT`, `DRONE_STEP_NUMBER` - default
+to `"0"` rather than `""` for the same reason: many official Drone plugins
+bind these straight to an `int64` CLI flag and crash on `""` before their
+own logic runs. `DRONE_BUILD_STARTED`, `DRONE_BUILD_CREATED`, and
+`DRONE_STAGE_STARTED` get a real, if approximate, value - the time this
+export step ran, since GitHub Actions exposes no job-start-time env var.
+`DRONE_PULL_REQUEST` defaults to `"0"` on non-PR builds, matching Drone's
+own default, rather than being left empty.
 
 (These mostly describe Drone-server/build-graph state — timing,
 promote/rollback lineage, multi-stage dependencies — that GitHub Actions
