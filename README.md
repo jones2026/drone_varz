@@ -108,9 +108,13 @@ here.)
 - **Requires Docker on the runner.** Works out of the box on
   GitHub-hosted Linux runners; self-hosted or non-Linux runners need
   Docker available.
-- **Cold-compiles on every run.** The action builds its own Go binaries
-  via `go run` on each invocation rather than shipping a prebuilt
-  binary, so there's Go-toolchain setup + compile overhead per step.
+- **Builds its own Go binaries via `go run` on each invocation**
+  rather than shipping a prebuilt binary. `go.mod` is pinned to a Go
+  version GitHub-hosted runners already have cached, so `setup-go`
+  doesn't need to download a toolchain (~1s in practice), and
+  compiling this small codebase from a warm build cache is on the
+  order of single-digit seconds - but it's still a fresh compile every
+  run, not a prebuilt artifact.
 
 ## Development
 
