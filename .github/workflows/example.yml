@@ -27,18 +27,45 @@ jobs:
       # action: DRONE_* export, PLUGIN_* export, and the docker run all
       # have to work for this step to succeed.
       #
-      # The custom header carries a value straight from this settings:
-      # block (-> PLUGIN_HEADERS), so the sidecar's request log in the
-      # next step is visible proof the settings actually reached the real
-      # HTTP request, not just that some POST happened.
+      # Settings deliberately exercise more of the plugin's optional
+      # fields (see https://plugins.drone.io/plugins/webhook and the
+      # plugin's own source: github.com/drone-plugins/drone-webhook) to
+      # validate more PLUGIN_* vars are actually being read, not just
+      # urls/headers:
+      #   - method/content_type/skip_verify: PLUGIN_METHOD/CONTENT_TYPE/
+      #     SKIP_VERIFY, straightforward string/bool settings.
+      #   - debug: PLUGIN_DEBUG, turns on the *plugin's own* verbose
+      #     logging (distinct from the sidecar's LOG_LEVEL: DEBUG above),
+      #     so its request/response detail lands directly in this step's
+      #     log output.
+      #   - template: PLUGIN_TEMPLATE, a Handlebars template the plugin
+      #     renders into the request body using repo.*/build.* fields it
+      #     derives from the DRONE_* vars this action exports - so a
+      #     successful run here proves DRONE_* passthrough too, not just
+      #     PLUGIN_* settings.
+      #   - headers: PLUGIN_HEADERS, a value straight from this settings:
+      #     block, visible in the sidecar's request log in the next step
+      #     as proof settings reached the real HTTP request.
       - name: Run plugins/webhook through this action
         uses: ./
         with:
           image: plugins/webhook
           settings: |
             urls: http://localhost:8080/post
+            method: POST
+            content_type: application/json
             valid_response_codes: 200
+            skip_verify: false
+            debug: true
             headers: X-Drone-Varz-Demo=hello-from-drone-varz
+            template: |
+              {
+                "message": "hello from drone_varz",
+                "repo": "{{repo.owner}}/{{repo.name}}",
+                "branch": "{{build.branch}}",
+                "commit": "{{build.commit}}",
+                "status": "{{build.status}}"
+              }
 
       - name: Show what the sidecar received
         if: always()
