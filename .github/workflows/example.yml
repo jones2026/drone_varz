@@ -16,7 +16,7 @@ jobs:
         env:
           LOG_LEVEL: DEBUG
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # plugins/webhook is a real, published Drone plugin. It POSTs a JSON
       # build payload to the configured url(s). Rather than pointing it at
