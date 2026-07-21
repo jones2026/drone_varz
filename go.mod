@@ -1,4 +1,4 @@
-module github.com/jones2026/drone_varz
+module github.com/jones2026/drone-action-bridge
 
 go 1.18
 

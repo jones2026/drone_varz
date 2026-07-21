@@ -7,8 +7,8 @@ import (
 	"os"
 	"sort"
 
-	"github.com/jones2026/drone_varz/internal/droneenv"
-	"github.com/jones2026/drone_varz/internal/githubenv"
+	"github.com/jones2026/drone-action-bridge/internal/droneenv"
+	"github.com/jones2026/drone-action-bridge/internal/githubenv"
 )
 
 func main() {
