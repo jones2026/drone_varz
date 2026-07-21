@@ -18,9 +18,9 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: jones2026/drone-action-bridge@main
+      - uses: jones2026/drone-action-bridge@v1
         with:
           image: plugins/slack
           settings: |
